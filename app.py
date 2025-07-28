@@ -6,10 +6,7 @@ st.title("NailVesta 入库程序")
 
 # 上传文件
 inventory_file = st.file_uploader("上传 NailVesta 产品库存表", type=["csv"])
-
-st.markdown("### 上传入库表（含 SKU 和 S/M/L 数量）")
-st.image("entry_example.png", caption="请参考以下入库表示意图", use_column_width=True)  # 👈 建议将图片命名为 entry_example.png 并放在同目录
-entry_file = st.file_uploader("上传入库表", type=["csv", "xlsx"])
+entry_file = st.file_uploader("上传入库表（含 SKU 和 S/M/L 数量）", type=["csv", "xlsx"])
 
 if inventory_file and entry_file:
     # 读取库存文件
