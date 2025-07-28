@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import fitz  # PyMuPDF
+import pdfplumber
 
 st.title("NailVesta 入库程序")
 
@@ -24,13 +24,12 @@ entry_file = st.file_uploader("上传入库表 PDF", type=["pdf"])
 
 if entry_file:
     try:
-        # 解析 PDF 文本内容
-        doc = fitz.open(stream=entry_file.read(), filetype="pdf")
-        full_text = ""
-        for page in doc:
-            full_text += page.get_text()
-
-        # 显示 PDF 文本内容
+        with pdfplumber.open(entry_file) as pdf:
+            full_text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    full_text += page_text + "\n"
         st.markdown("#### 📖 入库表内容预览")
         st.text_area("入库表文本内容", full_text, height=400)
     except Exception as e:
@@ -45,6 +44,5 @@ if inventory_file:
         st.markdown("### 📦 当前库存 SKU 列表（前 10 行）")
         st.dataframe(inventory_df.head(10))
         st.info("⚠️ 当前程序版本仅展示库存与 PDF 入库内容，尚未实现自动匹配 PDF 中的 SKU 与入库数量。")
-
     except Exception as e:
         st.error(f"读取库存表出错：{e}")
