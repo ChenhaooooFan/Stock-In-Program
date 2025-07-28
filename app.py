@@ -1,50 +1,50 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import fitz  # PyMuPDF
 
 st.title("NailVesta 入库程序")
 
-# 上传文件
+# 上传库存文件
 inventory_file = st.file_uploader("上传 NailVesta 产品库存表", type=["csv"])
-entry_file = st.file_uploader("上传入库表（含 SKU 和 S/M/L 数量）", type=["csv", "xlsx"])
 
-if inventory_file and entry_file:
-    # 读取库存文件
-    inventory_df = pd.read_csv(inventory_file)
-    inventory_df = inventory_df.dropna(subset=['SKU编码'])
+# 展示 PDF 示例文件（说明示意）
+st.markdown("### 📄 入库表填写说明")
+with open("entry_upload_example.pdf", "rb") as f:
+    st.download_button(
+        label="📥 下载入库表填写示意 PDF",
+        data=f,
+        file_name="entry_upload_example.pdf",
+        mime="application/pdf"
+    )
 
-    # 读取入库文件
+# 上传入库表 PDF
+st.markdown("### 上传入库表（PDF 格式）")
+entry_file = st.file_uploader("上传入库表 PDF", type=["pdf"])
+
+if entry_file:
     try:
-        if entry_file.name.endswith(".csv"):
-            entry_df = pd.read_csv(entry_file)
-        else:
-            entry_df = pd.read_excel(entry_file)
+        # 解析 PDF 文本内容
+        doc = fitz.open(stream=entry_file.read(), filetype="pdf")
+        full_text = ""
+        for page in doc:
+            full_text += page.get_text()
+
+        # 显示 PDF 文本内容
+        st.markdown("#### 📖 入库表内容预览")
+        st.text_area("入库表文本内容", full_text, height=400)
     except Exception as e:
-        st.error(f"读取入库表时出错: {e}")
+        st.error(f"PDF 解析失败：{e}")
 
-    # 提取 SKU 和数量（不带尺码的）
-    raw_skus = entry_df.iloc[:, 3]  # 第4列是 SKU，不含尺码
-    qty_S = entry_df.iloc[:, 8]    # 第9列是 S
-    qty_M = entry_df.iloc[:, 9]    # 第10列是 M
-    qty_L = entry_df.iloc[:, 10]   # 第11列是 L
+# 以下逻辑只处理库存 CSV 表
+if inventory_file:
+    try:
+        inventory_df = pd.read_csv(inventory_file)
+        inventory_df = inventory_df.dropna(subset=['SKU编码'])
 
-    # 构造 SKU+尺码 对应数量
-    incoming_dict = {}
-    for sku, s, m, l in zip(raw_skus, qty_S, qty_M, qty_L):
-        if pd.notna(sku):
-            incoming_dict[f"{sku}-S"] = int(s) if not pd.isna(s) else 0
-            incoming_dict[f"{sku}-M"] = int(m) if not pd.isna(m) else 0
-            incoming_dict[f"{sku}-L"] = int(l) if not pd.isna(l) else 0
+        st.markdown("### 📦 当前库存 SKU 列表（前 10 行）")
+        st.dataframe(inventory_df.head(10))
+        st.info("⚠️ 当前程序版本仅展示库存与 PDF 入库内容，尚未实现自动匹配 PDF 中的 SKU 与入库数量。")
 
-    # 匹配入库数量
-    matched_qty = []
-    for sku in inventory_df['SKU编码']:
-        matched_qty.append(incoming_dict.get(sku, 0))
-
-    # 显示并复制结果
-    st.success("以下是匹配的入库数量，可直接复制粘贴")
-    result_series = pd.Series(matched_qty)
-    result_str = "\n".join(result_series.astype(str).tolist())
-    st.text_area("入库数量列表", result_str, height=400)
-
-    st.download_button("下载为 CSV", result_series.to_csv(index=False), file_name="入库数量.csv")
+    except Exception as e:
+        st.error(f"读取库存表出错：{e}")
